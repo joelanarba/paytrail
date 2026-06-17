@@ -1,0 +1,25 @@
+# Project instructions (not committed)
+CLAUDE.md
+
+# Secrets / environment
+.env
+*.env
+!deploy/*.env.example
+
+# Build output
+target/
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
