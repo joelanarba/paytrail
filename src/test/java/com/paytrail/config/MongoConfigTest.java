@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(MockRedisTestConfig.class)
-class MongoConfigIT {
+class MongoConfigTest {
     @Autowired MongoTemplate mongoTemplate;
 
     @Test
