@@ -3,9 +3,11 @@ package com.paytrail.document;
 import java.time.Instant;
 import org.bson.Document;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 
 @org.springframework.data.mongodb.core.mapping.Document(collection = "webhook_events")
+@CompoundIndex(name = "reference_event", def = "{'reference': 1, 'paystackEvent': 1}")
 public class WebhookEvent {
 
     @Id private String id;
