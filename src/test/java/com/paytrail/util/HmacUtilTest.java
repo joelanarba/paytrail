@@ -37,4 +37,10 @@ class HmacUtilTest {
     void rejectsNullSignature() {
         assertFalse(HmacUtil.verifySignature(PAYLOAD, SECRET, null));
     }
+
+    @Test
+    void rejectsMalformedHexSignature() {
+        assertFalse(HmacUtil.verifySignature(PAYLOAD, SECRET, "not-hex!!"));
+        assertFalse(HmacUtil.verifySignature(PAYLOAD, SECRET, "abc"));
+    }
 }
