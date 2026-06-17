@@ -14,7 +14,7 @@ class ProcessingLockTest {
         StringRedisTemplate t = mock(StringRedisTemplate.class);
         ValueOperations<String, String> ops = mock(ValueOperations.class);
         when(t.opsForValue()).thenReturn(ops);
-        when(ops.setIfAbsent(eq("lock:event:e1"), eq("1"), any(Duration.class))).thenReturn(true);
+        when(ops.setIfAbsent(eq("lock:event:e1"), eq("1"), eq(Duration.ofSeconds(30)))).thenReturn(true);
         ProcessingLock lock = new ProcessingLock(t);
         assertTrue(lock.tryAcquire("e1"));
     }
@@ -27,5 +27,12 @@ class ProcessingLockTest {
         when(t.opsForValue()).thenReturn(ops);
         when(ops.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(false);
         assertFalse(new ProcessingLock(t).tryAcquire("e1"));
+    }
+
+    @Test
+    void releasesLock() {
+        StringRedisTemplate t = mock(StringRedisTemplate.class);
+        new ProcessingLock(t).release("e1");
+        verify(t).delete("lock:event:e1");
     }
 }

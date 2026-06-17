@@ -27,4 +27,16 @@ class IdempotencyStoreTest {
         new IdempotencyStore(t).markProcessed("ref1", "charge.success");
         verify(ops).set(eq("idempotency:ref1:charge.success"), eq("PROCESSED"), eq(Duration.ofDays(7)));
     }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void reportsNotProcessedWhenAbsentOrDifferent() {
+        StringRedisTemplate t = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> ops = mock(ValueOperations.class);
+        when(t.opsForValue()).thenReturn(ops);
+        when(ops.get("idempotency:ref1:charge.success")).thenReturn(null);
+        assertFalse(new IdempotencyStore(t).isProcessed("ref1", "charge.success"));
+        when(ops.get("idempotency:ref1:charge.success")).thenReturn("FAILED");
+        assertFalse(new IdempotencyStore(t).isProcessed("ref1", "charge.success"));
+    }
 }
