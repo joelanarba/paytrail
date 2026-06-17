@@ -47,6 +47,13 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void noResourceMapsTo404() {
+        var ex = new org.springframework.web.servlet.resource.NoResourceFoundException(
+            org.springframework.http.HttpMethod.GET, "/api/v1/nope");
+        assertEquals(HttpStatus.NOT_FOUND, handler.handleNoResource(ex).getStatusCode());
+    }
+
+    @Test
     void validationErrorsMapsTo400WithFieldErrors() {
         MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
         BindingResult br = mock(BindingResult.class);

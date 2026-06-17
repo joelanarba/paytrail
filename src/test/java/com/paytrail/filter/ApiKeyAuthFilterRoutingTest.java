@@ -37,7 +37,7 @@ class ApiKeyAuthFilterRoutingTest {
     @Test
     void webhookPathBypassesAuth() {
         ResponseEntity<String> r = rest.getForEntity("/api/v1/webhooks/ping", String.class);
-        assertNotEquals(HttpStatus.UNAUTHORIZED, r.getStatusCode(),
-            "webhook path must be excluded from auth (expect 404/405, not 401)");
+        assertEquals(HttpStatus.NOT_FOUND, r.getStatusCode(),
+            "excluded webhook path with no handler should be 404, not 401 or 500");
     }
 }
