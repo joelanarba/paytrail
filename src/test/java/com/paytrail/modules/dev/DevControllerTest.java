@@ -33,4 +33,21 @@ class DevControllerTest {
                 .contentType("application/json").content("{\"merchantId\":\"m1\",\"description\":\"demo\"}"))
             .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void rejectsMissingSuperKey() throws Exception {
+        mvc.perform(post("/api/v1/dev/api-keys")
+                .contentType("application/json")
+                .content("{\"merchantId\":\"m1\",\"description\":\"demo\"}"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void rejectsBlankMerchantIdWith400() throws Exception {
+        mvc.perform(post("/api/v1/dev/api-keys")
+                .header("X-Super-Key", "test-super-key")
+                .contentType("application/json")
+                .content("{\"merchantId\":\"\",\"description\":\"demo\"}"))
+            .andExpect(status().isBadRequest());
+    }
 }
