@@ -4,6 +4,7 @@ import com.paytrail.document.PaymentProjection;
 import com.paytrail.document.PaymentStatus;
 import com.paytrail.repository.PaymentProjectionRepository;
 import com.paytrail.support.MockRedisTestConfig;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,6 +19,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class ProjectionWriterTest {
     @Autowired ProjectionWriter writer;
     @Autowired PaymentProjectionRepository payments;
+
+    @BeforeEach
+    void clearProjections() {
+        payments.deleteAll();
+    }
 
     @Test
     void upsertCreatesThenUpdatesByReference() {
