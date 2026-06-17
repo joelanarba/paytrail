@@ -2,7 +2,8 @@
 
 Date: 2026-06-17
 Status: Approved
-Source of truth: this document + `CLAUDE.md` + the build prompt it captures.
+
+This document is the authoritative design for the initial build of PayTrail.
 
 ## 1. Overview
 
@@ -49,51 +50,50 @@ Query API (X-Api-Key, merchant-scoped; SUPER_API_KEY bypasses scoping)
   POST /api/v1/dead-letters/{eventId}/retry  re-queue (status RECEIVED, retryCount 0)
 ```
 
-## 3. Resolved Technical Decisions
-
-These resolve open questions and internal contradictions found in the build prompt.
+## 3. Key Technical Decisions
 
 | Area | Decision | Rationale |
 |---|---|---|
-| Auth implementation | Plain `OncePerRequestFilter` (`ApiKeyAuthFilter`) registered via `FilterRegistrationBean`. **No** `spring-boot-starter-security`. | The build prompt's dependency list omits Spring Security, but Task 1.4 referenced CSRF/form-login (Spring Security concepts). A plain filter is simpler, fewer deps, and fits a service-to-service API-key model. `SecurityConfig` only registers the filter; there is no CSRF/form-login to disable. |
-| Super key | Recognized inside the same `ApiKeyAuthFilter`: if `X-Api-Key` equals `SUPER_API_KEY`, set super context (`isSuperKey = true`) which bypasses merchant scoping. | One auth path, no separate mechanism. |
-| Auth scope | Filter applies to all routes **except** `/api/v1/webhooks/**` and `/api/v1/dev/**`. The dev seed endpoint validates `X-Super-Key` against `SUPER_API_KEY` itself. | Webhook is HMAC-secured; dev endpoint is super-key-gated by its own check. |
-| Auth failure response | Filter writes a `401` `ApiResponse` error JSON directly to the response. | Consistent error shape without Spring Security entry points. |
-| Redis in tests | Mocked `RedisTemplate` beans via a test `@TestConfiguration`; lock/idempotency asserted via Mockito interactions. Real Lettuce client at runtime. | No maintained embedded Redis for Java 21; deployment is Docker-free so Testcontainers is unreliable in CI/EC2. Hermetic and fast. |
-| HMAC raw body | Controller takes `@RequestBody String rawBody`, verifies HMAC on the exact string, then parses with `ObjectMapper`. | Simpler and more robust than registering a custom `HttpMessageConverter` / content-caching wrapper. |
+| Auth implementation | Plain `OncePerRequestFilter` (`ApiKeyAuthFilter`) registered via `FilterRegistrationBean`. No Spring Security on the classpath. | Simpler, fewer dependencies, and a good fit for a service-to-service API-key model. `SecurityConfig` only registers the filter; there is no CSRF/form-login to configure. |
+| Super key | Recognized inside `ApiKeyAuthFilter`: if `X-Api-Key` equals `SUPER_API_KEY`, set super context (`isSuperKey = true`), which bypasses merchant scoping. | One auth path, no separate mechanism. |
+| Auth scope | Filter applies to all routes except `/api/v1/webhooks/**` and `/api/v1/dev/**`. The dev seed endpoint validates `X-Super-Key` against `SUPER_API_KEY` itself. | Webhook is HMAC-secured; dev endpoint is super-key-gated by its own check. |
+| Auth failure response | Filter writes a `401` `ApiResponse` error JSON directly to the response. | Consistent error shape across all failures. |
+| Redis in tests | Mocked `RedisTemplate` beans via a test configuration; lock/idempotency asserted via interactions. Real Lettuce client at runtime. | Hermetic, fast, and avoids an external Redis or container dependency for the suite. |
+| HMAC raw body | Controller takes `@RequestBody String rawBody`, verifies HMAC on the exact string, then parses with `ObjectMapper`. | Simpler and more robust than a custom `HttpMessageConverter` / content-caching wrapper. |
 | Redis lock primitive | `redisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofSeconds(30))` returning `Boolean`. | Native `SET NX EX` semantics. |
-| Document IDs | `@Id` with `String` type. | Rule 11 overrides CLAUDE.md's `ObjectId` schema notation. |
+| Document IDs | `@Id` with `String` type. | Simpler to serialize in the query API than a raw `ObjectId`. |
 | Mongo indexes | Created on startup in `MongoConfig` via `IndexOperations`, with an INFO log confirming each. | Verifiable on boot; no reliance on annotation auto-index. |
-| Timestamps | `java.time.Instant`, UTC. | Rule 10. |
-| Git | `git init` first; `.gitignore` covers `CLAUDE.md`, `.env`, `target/`, IDE files. Conventional commits, no `Co-Authored-By`, no AI references. | No repo exists yet; final checklist requires `CLAUDE.md` gitignored. |
+| Timestamps | `java.time.Instant`, UTC. | Unambiguous storage and comparison. |
+| Repository setup | Initialize git; ignore environment files, build output, IDE metadata, and local working notes. Conventional commit messages. | Clean history from the first commit. |
 
-## 4. Non-Negotiable Rules (apply to every sprint)
+## 4. Engineering Conventions
 
 1. No Lombok — explicit constructors, getters, setters.
 2. No MapStruct — manual DTO mapping in the service layer.
 3. Constructor injection only — never `@Autowired` on a field.
-4. No `System.out.println` — SLF4J only (the Sprint 4 startup key seed log is the single labelled exception).
+4. SLF4J for all logging; no `System.out.println` (the Sprint 4 startup key seed log is the single labelled exception).
 5. No hardcoded secrets — all sensitive values from environment variables.
-6. No `Co-Authored-By` trailers in commits.
-7. No mention of AI tools / code generators in commits, comments, or files.
-8. No emojis anywhere.
-9. All endpoints wrapped in `ResponseEntity<ApiResponse<T>>`.
-10. All timestamps stored as UTC `java.time.Instant`.
-11. MongoDB document IDs use `@Id` with `String` type.
-12. Every sprint ends with `mvn clean test` green and no compiler warnings before proceeding.
+6. All endpoints wrapped in `ResponseEntity<ApiResponse<T>>`.
+7. All timestamps stored as UTC `java.time.Instant`.
+8. MongoDB document IDs use `@Id` with `String` type.
+9. Every sprint ends with `mvn clean test` green and no compiler warnings before proceeding.
 
 `ApiResponse<T>` success shape: `{ success: true, message: string, data: T }`.
 Error shape: `{ success: false, message: string, errors: [...] }`.
 
 ## 5. Data Model (MongoDB)
 
-- **`webhook_events`** — immutable raw events. Fields per CLAUDE.md. Status enum:
-  `RECEIVED | PROCESSING | PROCESSED | FAILED | DEAD_LETTER`. Indexes: compound
+- **`webhook_events`** — immutable raw events. Status enum:
+  `RECEIVED | PROCESSING | PROCESSED | FAILED | DEAD_LETTER`. Core fields: `eventId` (UUID),
+  `paystackEvent`, `reference`, `merchantId`, `rawPayload`, `parsedData`, `status`, `retryCount`,
+  `failureReason`, `receivedAt`, `processedAt`, timestamps. Indexes: compound
   `(reference, paystackEvent)`, `status`, `merchantId`.
 - **`payment_projections`** — current payment state. Status: `PENDING | SUCCESS | FAILED | REFUNDED`.
-  Indexes: unique `reference`, `merchantId`. Amounts in kobo (`Long`).
-- **`merchant_summaries`** — per-merchant aggregates. Index: unique `merchantId`.
-- **`api_keys`** — `keyHash` (SHA-256, unique index), `merchantId`, `isActive`, `lastUsedAt`.
+  Amounts in kobo (`Long`). Indexes: unique `reference`, `merchantId`.
+- **`merchant_summaries`** — per-merchant aggregates (transaction counts, revenue, refunds,
+  last transaction time). Index: unique `merchantId`.
+- **`api_keys`** — `keyHash` (SHA-256, unique index), `merchantId`, `description`, `isActive`,
+  `createdAt`, `lastUsedAt`.
 
 Upserts in handlers use `MongoTemplate.upsert(query, update, Class)` (not repository `save`),
 always setting `updatedAt`.
@@ -101,12 +101,12 @@ always setting `updatedAt`.
 ## 6. Sprint Breakdown (single plan, executed in order)
 
 ### Sprint 1 — Scaffold, MongoDB, API key auth, webhook ingestion
-- Maven project: Spring Boot 3.x, Java 21. Deps: web, data-mongodb, data-redis, validation,
-  flapdoodle embed mongo (test). `application.properties` env-driven;
+- Maven project: Spring Boot 3.x, Java 21. Dependencies: web, data-mongodb, data-redis,
+  validation, embedded MongoDB (test scope). `application.properties` env-driven;
   `application-test.properties` uses embedded Mongo + mocked Redis.
 - Document classes: `WebhookEvent`, `PaymentProjection`, `MerchantSummary`, `ApiKey`.
 - `MongoConfig` creates indexes on startup with log confirmation.
-- Repositories with the finder methods listed in the build prompt.
+- Repositories with finder methods (by status, reference+event, status+retryCount, merchantId, etc.).
 - `ApiKeyService` (generate/validate, SHA-256 hash, returns raw key once, updates `lastUsedAt`).
 - `ApiKeyAuthFilter` + `MerchantContext` thread-local (merchantId + isSuperKey, cleared after request).
 - `SecurityConfig` registers the filter; excludes `/webhooks/**` and `/dev/**`.
@@ -145,14 +145,15 @@ always setting `updatedAt`.
 - `deploy/paytrail.service`, `deploy/nginx.conf`, `deploy/README-deployment.md`.
 - `docs/paytrail-api.postman_collection.json` with a pre-built webhook payload + valid test HMAC
   (test secret `test_secret_key_for_demo`, documented in the collection).
-- `README.md` (12 sections, first person, no emojis, no AI references).
+- `README.md` (Overview, How it works, Architecture, Tech Stack, Prerequisites, Local Setup,
+  Environment Variables, API Reference, Simulating Webhooks, Running Tests, Deployment, License).
 - Final `mvn clean test`.
 - Gate + commit: `feat: startup seeding, deployment config, Postman collection, README, final polish`.
 
 ## 7. Testing Strategy
 
 - Unit: JUnit 5 + Mockito for all service classes.
-- Integration: flapdoodle embedded MongoDB.
+- Integration: embedded MongoDB.
 - Web layer: MockMvc for controllers and the auth filter.
 - Redis: mocked `RedisTemplate` beans; behavior asserted via interactions.
 - Required coverage: HMAC constant-time path, idempotency no-op on re-send, dead-letter at 3 failures,
@@ -175,8 +176,8 @@ always setting `updatedAt`.
 
 ## 10. Definition of Done
 
-The build prompt's final verification checklist applies in full: `mvn clean test` green;
-no `println`/Lombok/field-`@Autowired`/hardcoded secrets/AI references/emojis; `ApiResponse`
-shape on all endpoints; paginated list shape; webhook <200ms; idempotency, dead-letter, lock,
-merchant-scoping, and super-key bypass all tested; Mongo indexes created on startup;
-`CLAUDE.md` gitignored; README + Postman + deploy files present.
+`mvn clean test` green; constructor injection throughout; no `System.out.println` in `src/main`
+(startup seed log excepted); no hardcoded secrets; `ApiResponse<T>` shape on all endpoints;
+paginated list shape on all list endpoints; webhook returns 200 in under 200ms with no inline
+processing; idempotency, dead-letter, lock, merchant-scoping, and super-key bypass all tested;
+Mongo indexes created on startup; README, Postman collection, and deployment files present.
