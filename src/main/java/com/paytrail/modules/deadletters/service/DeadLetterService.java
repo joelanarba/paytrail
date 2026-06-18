@@ -57,6 +57,9 @@ public class DeadLetterService {
         if (!MerchantContext.isSuperKey() && !e.getMerchantId().equals(MerchantContext.getMerchantId())) {
             throw new ResourceNotFoundException("Dead letter not found");
         }
+        if (e.getStatus() != EventStatus.DEAD_LETTER) {
+            throw new ResourceNotFoundException("Dead letter not found");
+        }
         e.setStatus(EventStatus.RECEIVED);
         e.setRetryCount(0);
         e.setFailureReason(null);
