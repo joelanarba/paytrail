@@ -38,10 +38,19 @@ public class EventProcessorScheduler {
     @Scheduled(fixedDelayString = "${paytrail.scheduler.interval-ms}")
     public void runBatch() {
         List<WebhookEvent> batch = repository.findByStatusAndRetryCountLessThan(
-                EventStatus.RECEIVED, 3, PageRequest.of(0, batchSize));
-        log.debug("Scheduler picking up {} events for processing", batch.size());
+            EventStatus.RECEIVED, 3, PageRequest.of(0, batchSize));
+        if (batch.isEmpty()) {
+            return;
+        }
+        log.debug("Processing batch of {} received events", batch.size());
         for (WebhookEvent event : batch) {
-            executor.execute(() -> processor.processEvent(event));
+            executor.execute(() -> {
+                try {
+                    processor.processEvent(event);
+                } catch (Exception e) {
+                    log.error("Failed to process event {}", event.getEventId(), e);
+                }
+            });
         }
     }
 }
