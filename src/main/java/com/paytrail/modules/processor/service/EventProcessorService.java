@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class EventProcessorService {
     private static final Logger log = LoggerFactory.getLogger(EventProcessorService.class);
-    static final int MAX_RETRIES = 3;
+    private static final int MAX_RETRIES = 3;
 
     private final ProcessingLock lock;
     private final IdempotencyStore idempotency;

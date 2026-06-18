@@ -67,6 +67,7 @@ class EventProcessorServiceTest {
         service.processEvent(e);
         verify(chargeSuccess, never()).handle(any());
         assertEquals(EventStatus.PROCESSED, e.getStatus());
+        assertNotNull(e.getProcessedAt());
         verify(lock).release("e1");
     }
 
@@ -93,6 +94,7 @@ class EventProcessorServiceTest {
         assertEquals(3, e.getRetryCount());
         assertEquals(EventStatus.DEAD_LETTER, e.getStatus());
         assertEquals("boom", e.getFailureReason());
+        verify(lock).release("e1");
     }
 
     @Test
