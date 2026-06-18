@@ -34,24 +34,27 @@ public class EventQueryService {
     }
 
     public PageResponse<EventSummary> list(EventQueryFilters f, int page, int size) {
-        Criteria c = new Criteria();
+        List<Criteria> parts = new java.util.ArrayList<>();
         if (!MerchantContext.isSuperKey()) {
-            c.and("merchantId").is(MerchantContext.getMerchantId());
+            parts.add(Criteria.where("merchantId").is(MerchantContext.getMerchantId()));
         } else if (f.merchantId != null) {
-            c.and("merchantId").is(f.merchantId);
+            parts.add(Criteria.where("merchantId").is(f.merchantId));
         }
         if (f.status != null) {
-            c.and("status").is(f.status);
+            parts.add(Criteria.where("status").is(f.status));
         }
         if (f.paystackEvent != null) {
-            c.and("paystackEvent").is(f.paystackEvent);
+            parts.add(Criteria.where("paystackEvent").is(f.paystackEvent));
         }
         if (f.from != null || f.to != null) {
             Criteria t = Criteria.where("receivedAt");
             if (f.from != null) t.gte(f.from);
             if (f.to != null) t.lte(f.to);
-            c.andOperator(t);
+            parts.add(t);
         }
+        Criteria c = parts.isEmpty()
+                ? new Criteria()
+                : new Criteria().andOperator(parts.toArray(new Criteria[0]));
         Query query = new Query(c);
         long total = mongo.count(query, WebhookEvent.class);
         query.with(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "receivedAt")));

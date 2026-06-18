@@ -3,6 +3,7 @@ package com.paytrail.modules.events;
 import com.paytrail.common.PageResponse;
 import com.paytrail.document.EventStatus;
 import com.paytrail.document.WebhookEvent;
+import com.paytrail.exception.ResourceNotFoundException;
 import com.paytrail.filter.MerchantContext;
 import com.paytrail.modules.events.dto.EventSummary;
 import com.paytrail.modules.events.service.EventQueryService;
@@ -49,5 +50,22 @@ class EventQueryServiceTest {
     void superKeySeesAll() {
         MerchantContext.set(null, true);
         assertEquals(2, service.list(new EventQueryService.EventQueryFilters(), 0, 20).getTotalElements());
+    }
+
+    @Test
+    void merchantScopeAppliesEvenWithDateFilter() {
+        MerchantContext.set("m1", false);
+        EventQueryService.EventQueryFilters f = new EventQueryService.EventQueryFilters();
+        f.from = Instant.now().minusSeconds(3600);
+        f.to = Instant.now().plusSeconds(3600);
+        PageResponse<EventSummary> page = service.list(f, 0, 20);
+        assertEquals(1, page.getTotalElements(), "date filter must NOT bypass merchant scoping");
+        assertEquals("e1", page.getContent().get(0).getEventId());
+    }
+
+    @Test
+    void getByEventIdRejectsOtherMerchantWith404() {
+        MerchantContext.set("m1", false);
+        assertThrows(ResourceNotFoundException.class, () -> service.getByEventId("e2"));
     }
 }
