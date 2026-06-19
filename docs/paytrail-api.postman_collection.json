@@ -1,0 +1,342 @@
+{
+  "info": {
+    "name": "PayTrail API",
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "PayTrail payment webhook event processor API.\n\nThe webhook sample in the Webhooks folder sends a pre-signed charge.success event.\nThe signature in the x-paystack-signature header was computed with HMAC-SHA512 over\nthe exact request body using the test secret: test_secret_key_for_demo\n\nTo use the webhook request against a running instance, start the app with:\n  PAYSTACK_SECRET_KEY=test_secret_key_for_demo\n\nAll query endpoints require X-Api-Key. Set the api_key collection variable to\na valid key for your merchant. For admin/cross-merchant endpoints, set super_key\nto the value of SUPER_API_KEY configured in the running app."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "super_key",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Receive Paystack webhook (signed sample)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-paystack-signature",
+                "value": "99b4502b889eb0ebc2f0eaf9c823e4a20a55b52decff687352ed7acb46aab7f09bfbf95c70ecde8148fba82df395376a1904fd329e64de0abd6c675b1200c936"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"data\":{\"reference\":\"ref_demo_1\",\"amount\":500000,\"currency\":\"NGN\",\"channel\":\"card\",\"customer\":{\"email\":\"demo@paytrail.test\",\"first_name\":\"Demo\",\"last_name\":\"User\"},\"metadata\":{\"merchant_id\":\"demo-merchant\"}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/webhooks/paystack",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "webhooks", "paystack"]
+            },
+            "description": "Sends a charge.success webhook event with a valid HMAC-SHA512 signature.\nThe signature was computed against the exact body shown here using the secret test_secret_key_for_demo.\nThe app must be started with PAYSTACK_SECRET_KEY=test_secret_key_for_demo for this to pass verification."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "List events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/events",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "events"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "paystackEvent",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns a paginated list of webhook events for the authenticated merchant. Supports optional filters: status (RECEIVED, PROCESSING, PROCESSED, FAILED, DEAD_LETTER) and paystackEvent (charge.success, charge.failed, etc.)."
+          }
+        },
+        {
+          "name": "Get event by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/events/:eventId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "events", ":eventId"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "",
+                  "description": "Internal event UUID (eventId field from the webhook_events collection)"
+                }
+              ]
+            },
+            "description": "Returns a single webhook event by its internal eventId. Scoped to the authenticated merchant."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Get payment by reference",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/:reference",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", ":reference"],
+              "variable": [
+                {
+                  "key": "reference",
+                  "value": "",
+                  "description": "Paystack transaction reference"
+                }
+              ]
+            },
+            "description": "Returns the current payment projection for a given Paystack reference. Includes status, amount, customer info, and channel."
+          }
+        },
+        {
+          "name": "List payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns a paginated list of payment projections for the authenticated merchant. Supports optional status filter (PENDING, SUCCESS, FAILED, REFUNDED)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Merchants",
+      "item": [
+        {
+          "name": "Get own merchant summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/merchants/summary",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "merchants", "summary"]
+            },
+            "description": "Returns the pre-computed summary for the merchant associated with the API key: total transactions, successful, failed, total revenue, and total refunded (all amounts in kobo)."
+          }
+        },
+        {
+          "name": "Get merchant summary by ID (super)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{super_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/merchants/:merchantId/summary",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "merchants", ":merchantId", "summary"],
+              "variable": [
+                {
+                  "key": "merchantId",
+                  "value": "",
+                  "description": "Target merchant ID. Requires a super key (SUPER_API_KEY)."
+                }
+              ]
+            },
+            "description": "Returns the summary for any merchant by ID. Requires the super API key (set SUPER_API_KEY env var and use that value as X-Api-Key)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dead Letters",
+      "item": [
+        {
+          "name": "List dead letter events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dead-letters",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dead-letters"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns events that have exceeded the maximum retry count (3) and are now in DEAD_LETTER status. These require manual review and optional re-queuing."
+          }
+        },
+        {
+          "name": "Retry dead letter event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dead-letters/:eventId/retry",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dead-letters", ":eventId", "retry"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "",
+                  "description": "Internal event UUID of the dead letter event to re-queue"
+                }
+              ]
+            },
+            "description": "Resets a DEAD_LETTER event back to RECEIVED status with retryCount 0, making it eligible for the next background processor run."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dev",
+      "item": [
+        {
+          "name": "Create API key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Super-Key",
+                "value": "{{super_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"merchantId\":\"demo-merchant\",\"description\":\"demo\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/dev/api-keys",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dev", "api-keys"]
+            },
+            "description": "Creates a new API key for a merchant. Requires the super key in the X-Super-Key header (set the super_key collection variable to the value of SUPER_API_KEY). Returns the raw key value once — store it immediately."
+          }
+        }
+      ]
+    }
+  ]
+}
