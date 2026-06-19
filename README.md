@@ -96,7 +96,14 @@ git clone https://github.com/your-username/paytrail.git
 cd paytrail
 ```
 
-2. Create a local environment file or export the variables listed in the Environment Variables section. At minimum you need `MONGODB_URI`, `REDIS_URL`, `PAYSTACK_SECRET_KEY`, and `SUPER_API_KEY`.
+2. Provide configuration. The application automatically loads a `.env` file from the project root on startup, so the simplest path is to copy the template and edit it:
+
+```bash
+cp .env.example .env
+# then edit .env with your values
+```
+
+The `.env` file is gitignored. It is parsed as Java properties (`KEY=value`, no `export`, no quotes). At minimum you need `MONGODB_URI`, `REDIS_URL`, `PAYSTACK_SECRET_KEY`, and `SUPER_API_KEY`. Alternatively, you can export the variables in your shell instead of using a `.env` file; real environment variables take precedence over the file.
 
 3. Start the application:
 
