@@ -1,0 +1,15 @@
+[Unit]
+Description=PayTrail Webhook Processor
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/opt/paytrail
+EnvironmentFile=/etc/paytrail/paytrail.env
+ExecStart=/usr/bin/java -jar /opt/paytrail/paytrail.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
