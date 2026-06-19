@@ -1,12 +1,18 @@
 package com.paytrail.modules.processor.handler;
 
+import com.paytrail.document.PaymentProjection;
+import com.paytrail.document.PaymentStatus;
 import com.paytrail.document.WebhookEvent;
 import com.paytrail.modules.processor.service.ProjectionWriter;
+import com.paytrail.repository.PaymentProjectionRepository;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
+import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
@@ -16,7 +22,9 @@ class ChargeSuccessHandlerTest {
     @Test
     void upsertsPaymentAndIncrementsSummary() {
         ProjectionWriter writer = mock(ProjectionWriter.class);
-        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer);
+        PaymentProjectionRepository paymentRepository = mock(PaymentProjectionRepository.class);
+        when(paymentRepository.findByReference(anyString())).thenReturn(Optional.empty());
+        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer, paymentRepository);
         WebhookEvent e = new WebhookEvent();
         e.setMerchantId("m1");
         e.setReference("ref_1");
@@ -31,7 +39,9 @@ class ChargeSuccessHandlerTest {
     @Test
     void nullParsedDataDoesNotThrow() {
         ProjectionWriter writer = mock(ProjectionWriter.class);
-        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer);
+        PaymentProjectionRepository paymentRepository = mock(PaymentProjectionRepository.class);
+        when(paymentRepository.findByReference(anyString())).thenReturn(Optional.empty());
+        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer, paymentRepository);
         WebhookEvent e = new WebhookEvent();
         e.setMerchantId("m2");
         e.setReference("ref_2");
@@ -45,7 +55,9 @@ class ChargeSuccessHandlerTest {
     @Test
     void missingCustomerYieldsNullEmailAndName() {
         ProjectionWriter writer = mock(ProjectionWriter.class);
-        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer);
+        PaymentProjectionRepository paymentRepository = mock(PaymentProjectionRepository.class);
+        when(paymentRepository.findByReference(anyString())).thenReturn(Optional.empty());
+        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer, paymentRepository);
         WebhookEvent e = new WebhookEvent();
         e.setMerchantId("m3");
         e.setReference("ref_3");
@@ -59,7 +71,9 @@ class ChargeSuccessHandlerTest {
     @Test
     void firstNameOnlyTrimsCorrectly() {
         ProjectionWriter writer = mock(ProjectionWriter.class);
-        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer);
+        PaymentProjectionRepository paymentRepository = mock(PaymentProjectionRepository.class);
+        when(paymentRepository.findByReference(anyString())).thenReturn(Optional.empty());
+        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer, paymentRepository);
         WebhookEvent e = new WebhookEvent();
         e.setMerchantId("m4");
         e.setReference("ref_4");
@@ -74,7 +88,9 @@ class ChargeSuccessHandlerTest {
     @Test
     void usesPaidAtFromPayloadWhenPresent() {
         ProjectionWriter writer = mock(ProjectionWriter.class);
-        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer);
+        PaymentProjectionRepository paymentRepository = mock(PaymentProjectionRepository.class);
+        when(paymentRepository.findByReference(anyString())).thenReturn(Optional.empty());
+        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer, paymentRepository);
         WebhookEvent e = new WebhookEvent();
         e.setMerchantId("m5");
         e.setReference("ref_5");
@@ -85,5 +101,24 @@ class ChargeSuccessHandlerTest {
         verify(writer).upsertPaymentSuccess(eq("ref_5"), eq("m5"), eq(300L), isNull(),
             isNull(), isNull(), isNull(), eq(expectedPaidAt));
         verify(writer).recordSuccess(eq("m5"), eq(300L), eq(expectedPaidAt));
+    }
+
+    @Test
+    void doesNotIncrementCounterWhenAlreadySuccess() {
+        ProjectionWriter writer = mock(ProjectionWriter.class);
+        PaymentProjectionRepository paymentRepository = mock(PaymentProjectionRepository.class);
+        PaymentProjection existing = new PaymentProjection();
+        existing.setReference("ref_dup");
+        existing.setStatus(PaymentStatus.SUCCESS);
+        when(paymentRepository.findByReference("ref_dup")).thenReturn(Optional.of(existing));
+        ChargeSuccessHandler handler = new ChargeSuccessHandler(writer, paymentRepository);
+        WebhookEvent e = new WebhookEvent();
+        e.setMerchantId("m6");
+        e.setReference("ref_dup");
+        e.setParsedData(Document.parse("{\"reference\":\"ref_dup\",\"amount\":1000,\"currency\":\"NGN\"}"));
+        handler.handle(e);
+        verify(writer).upsertPaymentSuccess(eq("ref_dup"), eq("m6"), eq(1000L), eq("NGN"),
+            isNull(), isNull(), isNull(), any());
+        verify(writer, never()).recordSuccess(anyString(), anyLong(), any());
     }
 }

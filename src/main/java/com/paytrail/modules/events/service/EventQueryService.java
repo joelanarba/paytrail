@@ -35,6 +35,10 @@ public class EventQueryService {
 
     /** Returns a paginated list of webhook events, filtered by the supplied criteria and scoped to the authenticated merchant. */
     public PageResponse<EventSummary> list(EventQueryFilters f, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = (size < 1) ? 20 : size;
+        page = safePage;
+        size = safeSize;
         List<Criteria> parts = new java.util.ArrayList<>();
         if (!MerchantContext.isSuperKey()) {
             parts.add(Criteria.where("merchantId").is(MerchantContext.getMerchantId()));

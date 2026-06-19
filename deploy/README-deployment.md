@@ -149,16 +149,22 @@ sudo systemctl status nginx
 
 ## Step 8: Verify the Deployment
 
-Test that PayTrail is accessible through Nginx on port 80:
+Test that PayTrail is accessible through Nginx on port 80. PayTrail uses Spring Boot Actuator for health checks, which is available at `/actuator/health` and does not require an API key:
 
 ```bash
-curl http://localhost/api/v1/health
+curl http://localhost/actuator/health
 ```
 
 From your local machine:
 
 ```bash
-curl http://<your-server-ip>/api/v1/health
+curl http://<your-server-ip>/actuator/health
+```
+
+A successful response looks like this:
+
+```json
+{"status":"UP"}
 ```
 
 ## Monitoring and Troubleshooting

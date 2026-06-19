@@ -34,6 +34,10 @@ public class DeadLetterService {
 
     /** Returns a paginated list of DEAD_LETTER events, scoped to the authenticated merchant or filtered by merchantId for super keys. */
     public PageResponse<DeadLetterResponse> list(String merchantIdFilter, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = (size < 1) ? 20 : size;
+        page = safePage;
+        size = safeSize;
         List<Criteria> parts = new ArrayList<>();
         parts.add(Criteria.where("status").is(EventStatus.DEAD_LETTER));
         if (!MerchantContext.isSuperKey()) {
