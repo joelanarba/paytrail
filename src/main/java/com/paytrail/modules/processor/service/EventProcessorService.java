@@ -34,6 +34,7 @@ public class EventProcessorService {
         }
     }
 
+    /** Acquires a Redis lock, checks idempotency, dispatches to the appropriate handler, and marks the event PROCESSED or DEAD_LETTER on failure. */
     public void processEvent(WebhookEvent event) {
         if (!lock.tryAcquire(event.getEventId())) {
             log.info("Lock not acquired for event {}, skipping", event.getEventId());

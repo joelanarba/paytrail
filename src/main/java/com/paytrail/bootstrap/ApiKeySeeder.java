@@ -21,6 +21,7 @@ public class ApiKeySeeder implements ApplicationRunner {
         this.apiKeyService = apiKeyService;
     }
 
+    /** Seeds a demo API key for the 'demo-merchant' on first startup if no keys exist. */
     @Override
     public void run(ApplicationArguments args) {
         if (apiKeyRepository.count() == 0) {

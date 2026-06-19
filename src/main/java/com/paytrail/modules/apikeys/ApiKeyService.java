@@ -13,6 +13,7 @@ public class ApiKeyService {
 
     public ApiKeyService(ApiKeyRepository repository) { this.repository = repository; }
 
+    /** Generates a new raw API key, stores its SHA-256 hash, and returns the plaintext key. */
     public String generateKey(String merchantId, String description) {
         String raw = ApiKeyUtil.generateRawKey();
         ApiKey key = new ApiKey();
@@ -25,6 +26,7 @@ public class ApiKeyService {
         return raw;
     }
 
+    /** Validates a raw API key against stored hashes and updates its last-used timestamp. */
     public ApiKey validateKey(String rawKey) {
         if (rawKey == null || rawKey.isBlank()) throw new UnauthorizedException("Missing API key");
         ApiKey key = repository.findByKeyHash(ApiKeyUtil.sha256Hex(rawKey))

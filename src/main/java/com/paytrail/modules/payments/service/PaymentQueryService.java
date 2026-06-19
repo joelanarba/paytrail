@@ -36,6 +36,7 @@ public class PaymentQueryService {
         this.mongo = mongo;
     }
 
+    /** Retrieves the current payment projection for the given Paystack reference, enforcing merchant scoping. */
     public PaymentStatusResponse getByReference(String reference) {
         PaymentProjection p = paymentRepository.findByReference(reference)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
@@ -45,6 +46,7 @@ public class PaymentQueryService {
         return toResponse(p);
     }
 
+    /** Returns a paginated list of payment projections filtered by the supplied criteria and scoped to the authenticated merchant. */
     public PageResponse<PaymentStatusResponse> list(PaymentQueryFilters f, int page, int size) {
         List<Criteria> parts = new ArrayList<>();
         if (!MerchantContext.isSuperKey()) {

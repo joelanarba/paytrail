@@ -35,6 +35,7 @@ public class EventProcessorScheduler {
         this.batchSize = batchSize;
     }
 
+    /** Fetches a batch of RECEIVED events and submits each to the async executor for processing. */
     @Scheduled(fixedDelayString = "${paytrail.scheduler.interval-ms}")
     public void runBatch() {
         List<WebhookEvent> batch = repository.findByStatusAndRetryCountLessThan(

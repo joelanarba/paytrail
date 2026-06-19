@@ -17,12 +17,14 @@ public class MerchantSummaryService {
         this.merchantSummaryRepository = merchantSummaryRepository;
     }
 
+    /** Returns the aggregated payment summary for the merchant bound to the current request context. */
     public MerchantSummaryResponse getCurrentMerchantSummary() {
         String merchantId = MerchantContext.getMerchantId();
         Optional<MerchantSummary> found = merchantSummaryRepository.findByMerchantId(merchantId);
         return found.map(this::toResponse).orElse(MerchantSummaryResponse.zeroed(merchantId));
     }
 
+    /** Returns the aggregated payment summary for any merchant by ID; requires a super key. */
     public MerchantSummaryResponse getMerchantSummary(String merchantId) {
         if (!MerchantContext.isSuperKey()) {
             throw new ForbiddenException("Access denied: super key required");

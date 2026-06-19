@@ -32,6 +32,7 @@ public class DeadLetterService {
         this.repository = repository;
     }
 
+    /** Returns a paginated list of DEAD_LETTER events, scoped to the authenticated merchant or filtered by merchantId for super keys. */
     public PageResponse<DeadLetterResponse> list(String merchantIdFilter, int page, int size) {
         List<Criteria> parts = new ArrayList<>();
         parts.add(Criteria.where("status").is(EventStatus.DEAD_LETTER));
@@ -51,6 +52,7 @@ public class DeadLetterService {
         return new PageResponse<>(content, page, size, total);
     }
 
+    /** Resets a DEAD_LETTER event back to RECEIVED status with zero retry count so the scheduler can re-process it. */
     public void retry(String eventId) {
         WebhookEvent e = repository.findByEventId(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dead letter not found"));

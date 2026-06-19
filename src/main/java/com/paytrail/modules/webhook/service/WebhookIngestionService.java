@@ -30,6 +30,7 @@ public class WebhookIngestionService {
         this.paystackSecret = paystackSecret;
     }
 
+    /** Verifies the Paystack HMAC signature, persists the raw webhook event, and returns the internal event ID. */
     public String ingest(String rawBody, String signature) {
         if (!HmacUtil.verifySignature(rawBody, paystackSecret, signature)) {
             throw new InvalidSignatureException("Invalid webhook signature");

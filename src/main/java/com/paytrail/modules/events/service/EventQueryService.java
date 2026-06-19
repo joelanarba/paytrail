@@ -33,6 +33,7 @@ public class EventQueryService {
         this.mongo = mongo;
     }
 
+    /** Returns a paginated list of webhook events, filtered by the supplied criteria and scoped to the authenticated merchant. */
     public PageResponse<EventSummary> list(EventQueryFilters f, int page, int size) {
         List<Criteria> parts = new java.util.ArrayList<>();
         if (!MerchantContext.isSuperKey()) {
@@ -65,6 +66,7 @@ public class EventQueryService {
         return new PageResponse<>(content, page, size, total);
     }
 
+    /** Retrieves full details for a single webhook event by its internal event ID, enforcing merchant scoping. */
     public EventDetail getByEventId(String eventId) {
         Query q = new Query(Criteria.where("eventId").is(eventId));
         WebhookEvent e = mongo.findOne(q, WebhookEvent.class);

@@ -17,10 +17,12 @@ public class IdempotencyStore {
         return "idempotency:" + reference + ":" + event;
     }
 
+    /** Returns true if the given reference/event combination has already been marked PROCESSED in Redis. */
     public boolean isProcessed(String reference, String event) {
         return "PROCESSED".equals(redis.opsForValue().get(key(reference, event)));
     }
 
+    /** Stores a PROCESSED marker in Redis with a 7-day TTL for the given reference/event pair. */
     public void markProcessed(String reference, String event) {
         redis.opsForValue().set(key(reference, event), "PROCESSED", TTL);
     }

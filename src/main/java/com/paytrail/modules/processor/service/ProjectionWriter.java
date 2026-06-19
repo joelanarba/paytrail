@@ -27,6 +27,7 @@ public class ProjectionWriter {
         return new Query(Criteria.where("merchantId").is(merchantId));
     }
 
+    /** Upserts a payment projection as SUCCESS with the provided charge details. */
     public void upsertPaymentSuccess(String reference, String merchantId, long amount, String currency,
                                      String email, String name, String channel, Instant paidAt) {
         Instant now = Instant.now();
@@ -44,6 +45,7 @@ public class ProjectionWriter {
         mongo.upsert(byReference(reference), u, PaymentProjection.class);
     }
 
+    /** Upserts a payment projection as FAILED with the gateway failure reason. */
     public void upsertPaymentFailed(String reference, String merchantId, String failureReason) {
         Instant now = Instant.now();
         Update u = new Update()
@@ -55,6 +57,7 @@ public class ProjectionWriter {
         mongo.upsert(byReference(reference), u, PaymentProjection.class);
     }
 
+    /** Upserts a payment projection as REFUNDED and records the refund timestamp. */
     public void upsertPaymentRefunded(String reference) {
         Instant now = Instant.now();
         Update u = new Update()
@@ -64,6 +67,7 @@ public class ProjectionWriter {
         mongo.upsert(byReference(reference), u, PaymentProjection.class);
     }
 
+    /** Increments successful transaction and revenue totals for the given merchant. */
     public void recordSuccess(String merchantId, long amount, Instant when) {
         Update u = new Update()
             .inc("totalTransactions", 1)
@@ -74,6 +78,7 @@ public class ProjectionWriter {
         mongo.upsert(byMerchant(merchantId), u, MerchantSummary.class);
     }
 
+    /** Increments the failed transaction count for the given merchant. */
     public void recordFailure(String merchantId, Instant when) {
         Update u = new Update()
             .inc("totalTransactions", 1)
@@ -83,6 +88,7 @@ public class ProjectionWriter {
         mongo.upsert(byMerchant(merchantId), u, MerchantSummary.class);
     }
 
+    /** Increments the total refunded amount for the given merchant. */
     public void recordRefund(String merchantId, long refundedAmount) {
         Update u = new Update()
             .inc("totalRefunded", refundedAmount)
